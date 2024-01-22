@@ -9,42 +9,58 @@
 
 library(shiny)
 
-# Define UI for application that draws a histogram
+# defining ui for the view
 ui <- fluidPage(
-
-    # Application title
-    titlePanel("Old Faithful Geyser"),
-
-    # Sidebar with a slider input for number of bins 
-    sidebarLayout(
-        sidebarPanel(
-            sliderInput("bins",
-                        "Number of bins:",
-                        min = 1,
-                        max = 50,
-                        value = 30)
-        ),
-
-        # Show a plot of the generated distribution
-        mainPanel(
-           plotOutput("distPlot")
-        )
+  titlePanel("ML Predictor"),
+  
+  sidebarLayout(
+    sidebarPanel(
+      fileInput('file1', 'Upload Your Dataset'),
+      selectInput('sampleData', 'Or Choose a Sample Dataset', choices = c('Sample 1', 'Sample 2')),
+      uiOutput('selectTarget'),
+      uiOutput('selectFeatures'),
+      selectInput('algorithm', 'Choose an Algorithm', choices = c('Algorithm 1', 'Algorithm 2')),
+      numericInput('cvParameter', 'Set CV Parameter', value = 10),
+      sliderInput('testData', 'Percentage of Data for Testing', min = 0, max = 100, value = 30)
+    ),
+    
+    mainPanel(
+      textOutput("summary")
     )
+  )
 )
 
 # Define server logic required to draw a histogram
 server <- function(input, output) {
-
-    output$distPlot <- renderPlot({
-        # generate bins based on input$bins from ui.R
-        x    <- faithful[, 2]
-        bins <- seq(min(x), max(x), length.out = input$bins + 1)
-
-        # draw the histogram with the specified number of bins
-        hist(x, breaks = bins, col = 'darkgray', border = 'white',
-             xlab = 'Waiting time to next eruption (in mins)',
-             main = 'Histogram of waiting times')
-    })
+  
+  # Reactive expression to read the dataset
+  datasetInput <- reactive({
+    inFile <- input$file1
+    if (is.null(inFile))
+      return(NULL)
+    read.csv(inFile$datapath)
+  })
+  
+  # Output UI for target variable selection
+  output$selectTarget <- renderUI({
+    df <- datasetInput()
+    if (is.null(df)) return(NULL)
+    selectInput('targetVariable', 'Select Target Variable', choices = names(df))
+  })
+  
+  # Output UI for feature selection
+  output$selectFeatures <- renderUI({
+    df <- datasetInput()
+    if (is.null(df)) return(NULL)
+    checkboxGroupInput('features', 'Select Features', choices = names(df))
+  })
+  
+  # Summary of user inputs
+  output$summary <- renderText({
+    paste("You have selected", input$targetVariable, "as the target variable and",
+          toString(input$features), "as features with", input$algorithm,
+          "algorithm and a test data percentage of", input$testData, "%.")
+  })
 }
 
 # Run the application 
